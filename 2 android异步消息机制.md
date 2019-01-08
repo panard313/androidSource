@@ -1,9 +1,9 @@
 知乎上看了一篇非常不错的博文：<a href="http://zhuanlan.zhihu.com/kaede/20563936">有没有必要阅读ANDROID源码</a>
 痛定思过，为了更好的深入android体系，决定学习android framework层源码，就从最简单的android异步消息机制开始吧。
 
-**（一）Handler的常规使用方式**
+## **（一）Handler的常规使用方式**
 
-```
+```java
 public class MainActivity extends AppCompatActivity {
 
     public static final String TAG = MainActivity.class.getSimpleName();
@@ -45,11 +45,11 @@ public class MainActivity extends AppCompatActivity {
 
 可以看出，一般handler的使用方式都是在主线程中定义Handler，然后在子线程中调用mHandler.sendEmptyMessage();方法，然么这里有一个疑问了，我们可以在子线程中定义Handler么？
 
-**（二）如何在子线程中定义Handler？**
+## **（二）如何在子线程中定义Handler？**
 
 我们在子线程中定义Handler，看看结果:
 
-```
+```java
 texttitle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -75,7 +75,7 @@ texttitle.setOnClickListener(new View.OnClickListener() {
 可以看出来在子线程中定义Handler对象出错了，难道Handler对象的定义或者是初始化只能在主线程中？
 其实不是这样的，错误信息中提示的已经很明显了，在初始化Handler对象之前需要调用Looper.prepare()方法，那么好了，我们添加这句代码再次执行一次：
 
-```
+```java
 texttitle.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
@@ -100,7 +100,7 @@ texttitle.setOnClickListener(new View.OnClickListener() {
 
 其实不是这样的，在App初始化的时候会执行ActivityThread的main方法：
 
-```
+```java
 public static void main(String[] args) {
         Trace.traceBegin(Trace.TRACE_TAG_ACTIVITY_MANAGER, "ActivityThreadMain");
         SamplingProfilerIntegration.start();
@@ -149,7 +149,7 @@ public static void main(String[] args) {
 
 并且我们可以看到还调用了：Looper.loop()方法，通过参考阅读其他文章我们可以知道一个Handler的标准写法其实是这样的：
 
-```
+```java
 Looper.prepare();
 Handler mHandler = new Handler() {
    @Override
@@ -162,10 +162,10 @@ Handler mHandler = new Handler() {
 Looper.loop();
 ```
 
-**（三）查看Handler源码**
-1）查看Looper.prepare()方法
+## **（三）查看Handler源码**
+### 1）查看Looper.prepare()方法
 
-```
+```java
 // sThreadLocal.get() will return null unless you've called prepare().
     static final ThreadLocal<Looper> sThreadLocal = new ThreadLocal<Looper>();
 
@@ -189,7 +189,7 @@ Looper.loop();
 可以看到Looper中有一个ThreadLocal成员变量，熟悉JDK的同学应该知道，当使用ThreadLocal维护变量时，ThreadLocal为每个使用该变量的线程提供独立的变量副本，所以每一个线程都可以独立地改变自己的副本，而不会影响其它线程所对应的副本。具体参考：<a href="http://blog.csdn.net/lufeng20/article/details/24314381">彻底理解ThreadLocal</a>
 由此可以看出在每个线程中Looper.prepare()能且只能调用一次，这里我们可以尝试一下调用两次的情况。
 
-```
+```java
 /**
  * 这里Looper.prepare()方法调用了两次
 */
@@ -211,7 +211,7 @@ Looper.loop();
 
 我们继续看Looper对象的构造方法，可以看到在其构造方法中初始化了一个MessageQueue对象：
 
-```
+```java
 private Looper(boolean quitAllowed) {
         mQueue = new MessageQueue(quitAllowed);
         mThread = Thread.currentThread();
@@ -219,9 +219,9 @@ private Looper(boolean quitAllowed) {
 ```
 ***综上小结（1）：Looper.prepare()方法初始话了一个Looper对象并关联在一个MessageQueue对象，并且一个线程中只有一个Looper对象，只有一个MessageQueue对象。***
 
-2）查看Handler对象的构造方法
+### 2）查看Handler对象的构造方法
 
-```
+```java
 public Handler(Callback callback, boolean async) {
         if (FIND_POTENTIAL_LEAKS) {
             final Class<? extends Handler> klass = getClass();
@@ -245,15 +245,15 @@ public Handler(Callback callback, boolean async) {
 可以看出在Handler的构造方法中，主要初始化了一下变量，并判断Handler对象的初始化不应再内部类，静态类，匿名类中，并且保存了当前线程中的Looper对象。
 ***综上小结（2）：Looper.prepare()方法初始话了一个Looper对象并关联在一个MessageQueue对象，并且一个线程中只有一个Looper对象，只有一个MessageQueue对象。而Handler的构造方法则在Handler内部维护了当前线程的Looper对象***
 
-3）查看handler.sendMessage(msg)方法
+### 3）查看handler.sendMessage(msg)方法
 一般的，我们发送异步消息的时候会这样调用：
 
-```
+```java
 mHandler.sendMessage(new Message());
 ```
 通过不断的跟进源代码，其最后会调用：
 
-```
+```java
 private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMillis) {
         msg.target = this;
         if (mAsynchronous) {
@@ -264,7 +264,7 @@ private boolean enqueueMessage(MessageQueue queue, Message msg, long uptimeMilli
 ```
 原来msg.target就是Handler对象本身；而这里的queue对象就是我们的Handler内部维护的Looper对象关联的MessageQueue对象。查看messagequeue对象的enqueueMessage方法：
 
-```
+```java
 boolean enqueueMessage(Message msg, long when) {
         if (msg.target == null) {
             throw new IllegalArgumentException("Message must have a target.");
@@ -321,9 +321,9 @@ boolean enqueueMessage(Message msg, long when) {
 ```
 可以看到这里MessageQueue并没有使用列表将所有的Message保存起来，而是使用Message.next保存下一个Message，从而按照时间将所有的Message排序；
 
-4）查看Looper.Loop()方法
+### 4）查看Looper.Loop()方法
 
-```
+```java
 /**
      * Run the message queue in this thread. Be sure to call
      * {@link #quit()} to end the loop.
@@ -377,7 +377,7 @@ boolean enqueueMessage(Message msg, long when) {
 ```
 可以看到方法的内容还是比较多的。可以看到Looper.loop()方法里起了一个死循环，不断的判断MessageQueue中的消息是否为空，如果为空则直接return掉，然后执行queue.next()方法：
 
-```
+```java
 Message next() {
         // Return here if the message loop has already quit and been disposed.
         // This can happen if the application tries to restart a looper after quit
@@ -486,13 +486,13 @@ Message next() {
 ```
 
 可以看到其大概的实现逻辑就是Message的出栈操作，里面可能对线程，并发控制做了一些限制等。获取到栈顶的Message对象之后开始执行：
-```
+```java
 msg.target.dispatchMessage(msg);
 ```
 
 那么msg.target是什么呢？通过追踪可以知道就是我们定义的Handler对象，然后我们查看一下Handler类的dispatchMessage方法：
 
-```
+```java
 /**
      * Handle system messages here.
      */
@@ -511,14 +511,14 @@ msg.target.dispatchMessage(msg);
 ```
 可以看到，如果我们设置了callback（Runnable对象）的话，则会直接调用handleCallback方法：
 
-```
+```java
 private static void handleCallback(Message message) {
         message.callback.run();
     }
 ```
 即，如果我们在初始化Handler的时候设置了callback（Runnable）对象，则直接调用run方法。比如我们经常写的runOnUiThread方法：
 
-```
+```java
 runOnUiThread(new Runnable() {
             @Override
             public void run() {
@@ -528,7 +528,7 @@ runOnUiThread(new Runnable() {
 ```
 看其内部实现：
 
-```
+```java
 public final void runOnUiThread(Runnable action) {
         if (Thread.currentThread() != mUiThread) {
             mHandler.post(action);
@@ -541,10 +541,10 @@ public final void runOnUiThread(Runnable action) {
 而如果msg.callback为空的话，会直接调用我们的mCallback.handleMessage(msg)，即handler的handlerMessage方法。由于Handler对象是在主线程中创建的，所以handler的handlerMessage方法的执行也会在主线程中。
 
 
-**综上可以知道：**
-1）主线程中定义Handler，直接执行：
+## **综上可以知道：**
+### 1）主线程中定义Handler，直接执行：
 
-```
+```java
 Handler mHandler = new Handler() {
         @Override
         public void handleMessage(Message msg) {
@@ -554,7 +554,7 @@ Handler mHandler = new Handler() {
 ```
 而如果想要在子线程中定义Handler，则标准的写法为：
 
-```
+```java
 // 初始化该线程Looper，MessageQueue，执行且只能执行一次
                 Looper.prepare();
                 // 初始化Handler对象，内部关联Looper对象
@@ -568,16 +568,16 @@ Handler mHandler = new Handler() {
                 Looper.loop();
 ```
 
-2）一个线程中只存在一个Looper对象，只存在一个MessageQueue对象，可以存在N个Handler对象，Handler对象内部关联了本线程中唯一的Looper对象，Looper对象内部关联着唯一的一个MessageQueue对象。
+### 2）一个线程中只存在一个Looper对象，只存在一个MessageQueue对象，可以存在N个Handler对象，Handler对象内部关联了本线程中唯一的Looper对象，Looper对象内部关联着唯一的一个MessageQueue对象。
 
-3）MessageQueue消息队列不是通过列表保存消息（Message）列表的，而是通过Message对象的next属性关联下一个Message从而实现列表的功能，同时所有的消息都是按时间排序的。
+### 3）MessageQueue消息队列不是通过列表保存消息（Message）列表的，而是通过Message对象的next属性关联下一个Message从而实现列表的功能，同时所有的消息都是按时间排序的。
 
-4）android中两个子线程相互交互同样可以通过Handler的异步消息机制实现，可以在线程a中定义Handler对象，而在线程b中获取handler的引用并调用sendMessage方法。
+### 4）android中两个子线程相互交互同样可以通过Handler的异步消息机制实现，可以在线程a中定义Handler对象，而在线程b中获取handler的引用并调用sendMessage方法。
 
-5）activity内部默认存在一个handler的成员变量，android中一些其他的异步消息机制的实现方法：
+### 5）activity内部默认存在一个handler的成员变量，android中一些其他的异步消息机制的实现方法：
 Handler的post方法：
 
-```
+```java
 mHandler.post(new Runnable() {
                     @Override
                     public void run() {
@@ -587,7 +587,7 @@ mHandler.post(new Runnable() {
 ```
 查看其内部实现：
 
-```
+```java
 public final boolean post(Runnable r)
     {
        return  sendMessageDelayed(getPostMessage(r), 0);
@@ -597,7 +597,7 @@ public final boolean post(Runnable r)
 
 view的post方法：
 
-```
+```java
 public boolean post(Runnable action) {
         final AttachInfo attachInfo = mAttachInfo;
         if (attachInfo != null) {
@@ -612,7 +612,7 @@ public boolean post(Runnable action) {
 
 activity的runOnUiThread方法：
 
-```
+```java
 public final void runOnUiThread(Runnable action) {
         if (Thread.currentThread() != mUiThread) {
             mHandler.post(action);
@@ -624,7 +624,7 @@ public final void runOnUiThread(Runnable action) {
 判断当前线程是否是UI线程，如果不是，则调用handler的post方法，否则直接执行run方法。
 
 
-参考文章：
+## 参考文章：
 <br><a href="http://blog.csdn.net/guolin_blog/article/details/9991569">Android异步消息处理机制完全解析，带你从源码的角度彻底理解</a>
 <br><a href="http://blog.csdn.net/yanbober/article/details/45936145"> Android异步消息处理机制详解及源码分析</a>
 

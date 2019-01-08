@@ -103,24 +103,24 @@ new Thread(new Runnable() {
 
 ```
 Process: com.example.aaron.helloworld, PID: 659
-                                                                           android.view.ViewRootImpl$CalledFromWrongThreadException: Only the original thread that created a view hierarchy can touch its views.
-                                                                               at android.view.ViewRootImpl.checkThread(ViewRootImpl.java:6981)
-                                                                               at android.view.ViewRootImpl.requestLayout(ViewRootImpl.java:1034)
-                                                                               at android.view.View.requestLayout(View.java:17704)
-                                                                               at android.view.View.requestLayout(View.java:17704)
-                                                                               at android.view.View.requestLayout(View.java:17704)
-                                                                               at android.view.View.requestLayout(View.java:17704)
-                                                                               at android.widget.RelativeLayout.requestLayout(RelativeLayout.java:380)
-                                                                               at android.view.View.requestLayout(View.java:17704)
-                                                                               at android.widget.TextView.checkForRelayout(TextView.java:7109)
-                                                                               at android.widget.TextView.setText(TextView.java:4082)
-                                                                               at android.widget.TextView.setText(TextView.java:3940)
-                                                                               at android.widget.TextView.setText(TextView.java:3915)
-                                                                               at com.example.aaron.helloworld.MainActivity$MAsyncTask.onPreExecute(MainActivity.java:53)
-                                                                               at android.os.AsyncTask.executeOnExecutor(AsyncTask.java:587)
-                                                                               at android.os.AsyncTask.execute(AsyncTask.java:535)
-                                                                               at com.example.aaron.helloworld.MainActivity$1$1.run(MainActivity.java:40)
-                                                                               at java.lang.Thread.run(Thread.java:818)
+android.view.ViewRootImpl$CalledFromWrongThreadException: Only the original thread that created a view hierarchy can touch its views.
+    at android.view.ViewRootImpl.checkThread(ViewRootImpl.java:6981)
+    at android.view.ViewRootImpl.requestLayout(ViewRootImpl.java:1034)
+    at android.view.View.requestLayout(View.java:17704)
+    at android.view.View.requestLayout(View.java:17704)
+    at android.view.View.requestLayout(View.java:17704)
+    at android.view.View.requestLayout(View.java:17704)
+    at android.widget.RelativeLayout.requestLayout(RelativeLayout.java:380)
+    at android.view.View.requestLayout(View.java:17704)
+    at android.widget.TextView.checkForRelayout(TextView.java:7109)
+    at android.widget.TextView.setText(TextView.java:4082)
+    at android.widget.TextView.setText(TextView.java:3940)
+    at android.widget.TextView.setText(TextView.java:3915)
+    at com.example.aaron.helloworld.MainActivity$MAsyncTask.onPreExecute(MainActivity.java:53)
+    at android.os.AsyncTask.executeOnExecutor(AsyncTask.java:587)
+    at android.os.AsyncTask.execute(AsyncTask.java:535)
+    at com.example.aaron.helloworld.MainActivity$1$1.run(MainActivity.java:40)
+    at java.lang.Thread.run(Thread.java:818)
 ```
 若在子线程中执行execute方法，那么这时候如果在onPreExecute方法中刷新UI，会报错，即子线程中不能更新UI。
 
